@@ -5,6 +5,7 @@ import pprint
 from decimal import Decimal
 from typing import Any, Dict, Optional, Tuple
 
+import qcelemental as qcel
 from qcelemental.models import AtomicInput, AtomicResult, BasisSet, Provenance
 from qcelemental.util import safe_version, which
 
@@ -101,6 +102,16 @@ class GAMESSHarness(ProgramHarness):
 
         molcmd, moldata = input_model.molecule.to_string(dtype="gamess", units="Bohr", return_data=True)
         opts.update(moldata["keywords"])
+
+        # Split molecule $data for fmo/efmo
+        if opts.get("fmo__iefmo", None) is not None:
+            molcmd = molcmd.split("\n")
+            datacmd, fmoxyzcmd = molcmd[:3], molcmd[3:]
+            datacmd.extend(f" {el} {qcel.periodictable.to_atomic_number(el)}" for el in set(input_model.molecule.symbols))
+        #elements = [qcel.periodictable.to_atomic_number(self.molecule.symbols[iatom]) for iatom in range(natom)]
+            datacmd.append(" $end")
+            fmoxyzcmd.insert(0, " $fmoxyz")
+            molcmd = "\n".join(fmoxyzcmd) + "\n".join(datacmd) + "\n"
 
         # Handle calc type and quantum chemical method
         opts.update(muster_modelchem(input_model.model.method, input_model.driver.derivative_int()))
@@ -211,6 +222,8 @@ class GAMESSHarness(ProgramHarness):
         # Get the stdout from the calculation (required)
         stdout = outfiles.pop("stdout")
         stderr = outfiles.pop("stderr")
+        # ts comment
+        print("outfiles stdout: " + str(stdout), flush=True)
 
         method = input_model.model.method.lower()
         method = method[4:] if method.startswith("gms-") else method
