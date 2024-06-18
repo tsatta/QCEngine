@@ -317,7 +317,10 @@ class MDIServer:
 
             """Run an energy calculation"""
             input = qcel.models.AtomicInput(
+ # ts comment
                 molecule=self.molecule, driver="gradient", model=self.model, keywords=self.keywords
+                #molecule=self.molecule, driver="energy", model=self.model, keywords=self.keywords
+ # end ts comment
             )
             self.compute_return = compute(
                 input_data=input, program=self.program, raise_error=self.raise_error, local_options=self.local_options
